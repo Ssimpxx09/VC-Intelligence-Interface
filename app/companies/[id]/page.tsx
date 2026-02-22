@@ -1,5 +1,6 @@
 "use client";
-import { useState } from "react";
+
+import { useState, useEffect } from "react";
 
 interface CompanyProfileProps {
   params: { id: string };
@@ -17,15 +18,18 @@ interface EnrichedData {
 
 export default function CompanyProfile({ params }: CompanyProfileProps) {
   const companyId = params.id;
+
+  // State for enriched data
   const [data, setData] = useState<EnrichedData | null>(null);
   const [loading, setLoading] = useState(false);
 
-  // 📝 NOTES
-  const [note, setNote] = useState(
-    typeof window !== "undefined"
-      ? localStorage.getItem(`note-${companyId}`) ?? ""
-      : ""
-  );
+  // State for notes (SSR safe)
+  const [note, setNote] = useState("");
+
+  useEffect(() => {
+    const saved = localStorage.getItem(`note-${companyId}`);
+    if (saved) setNote(saved);
+  }, [companyId]);
 
   function saveNote() {
     localStorage.setItem(`note-${companyId}`, note);
@@ -34,10 +38,17 @@ export default function CompanyProfile({ params }: CompanyProfileProps) {
 
   async function handleEnrich() {
     setLoading(true);
-    const res = await fetch(`/api/enrich?id=${companyId}`);
-    const result = await res.json();
-    setData(result);
-    setLoading(false);
+    try {
+      const res = await fetch(`/api/enrich?id=${companyId}`);
+      if (!res.ok) throw new Error("Failed to fetch data");
+      const result: EnrichedData = await res.json();
+      setData(result);
+    } catch (err) {
+      console.error(err);
+      alert("Error fetching enriched data.");
+    } finally {
+      setLoading(false);
+    }
   }
 
   return (
@@ -45,11 +56,11 @@ export default function CompanyProfile({ params }: CompanyProfileProps) {
       <h1>Company Profile</h1>
       <h2>ID: {companyId}</h2>
 
-      <button onClick={handleEnrich}>
+      <button onClick={handleEnrich} disabled={loading}>
         {loading ? "Enriching..." : "Enrich"}
       </button>
 
-      {/* 📝 NOTES UI */}
+      {/* Notes Section */}
       <h3 style={{ marginTop: "30px" }}>Notes</h3>
       <textarea
         value={note}
@@ -59,30 +70,31 @@ export default function CompanyProfile({ params }: CompanyProfileProps) {
       <br />
       <button onClick={saveNote}>Save Note</button>
 
+      {/* Enriched Data */}
       {data && (
-  <div style={{ marginTop: "30px" }}>
-    <h3>⬩ Summary</h3>
-    <p>{data.summary}</p>
+        <div style={{ marginTop: "30px" }}>
+          <h3>⬩ Summary</h3>
+          <p>{data.summary}</p>
 
-    <h3>⬩ What They Do?</h3>
-    <p>{data.whatTheyDo}</p>
+          <h3>⬩ What They Do?</h3>
+          <p>{data.whatTheyDo.join(", ")}</p>
 
-    <h3>⬩ Keywords</h3>
-    <p>{data.keywords}</p>
+          <h3>⬩ Keywords</h3>
+          <p>{data.keywords.join(", ")}</p>
 
-    <h3>⬩ Signals</h3>
-    <p>{data.signals}</p>
+          <h3>⬩ Signals</h3>
+          <p>{data.signals.join(", ")}</p>
 
-    <h3>⬩ Length</h3>
-    <p>{data.length}</p>
+          <h3>⬩ Length</h3>
+          <p>{data.length}</p>
 
-    <h3>⬩ Sources</h3>
-    <p>{data.sources}</p>
+          <h3>⬩ Sources</h3>
+          <p>{data.sources}</p>
 
-    <h3>⬩ Date</h3>
-    <p>{data.timestamp}</p>
-  </div>
-)}
+          <h3>⬩ Date</h3>
+          <p>{data.timestamp}</p>
+        </div>
+      )}
     </div>
   );
 }
