@@ -1,17 +1,29 @@
 "use client";
-import { useState, use } from "react";
+import { useState } from "react";
 
-export default function CompanyProfile({ params }) {
-  const resolvedParams = use(params);
-  const companyId = resolvedParams.id;
+interface CompanyProfileProps {
+  params: { id: string };
+}
 
-  const [data, setData] = useState(null);
+interface EnrichedData {
+  summary: string;
+  whatTheyDo: string[];
+  keywords: string[];
+  signals: string[];
+  length: number;
+  sources: string;
+  timestamp: string;
+}
+
+export default function CompanyProfile({ params }: CompanyProfileProps) {
+  const companyId = params.id;
+  const [data, setData] = useState<EnrichedData | null>(null);
   const [loading, setLoading] = useState(false);
 
   // 📝 NOTES
   const [note, setNote] = useState(
     typeof window !== "undefined"
-      ? localStorage.getItem(`note-${companyId}`) || ""
+      ? localStorage.getItem(`note-${companyId}`) ?? ""
       : ""
   );
 
